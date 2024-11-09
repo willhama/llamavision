@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const router = useRouter()
 
   async function onSubmit(event: React.SyntheticEvent) {
     event.preventDefault()
@@ -17,6 +18,7 @@ export default function Home() {
     setTimeout(() => {
       setIsLoading(false)
     }, 2000)
+    router.push('/dashboard')
   }
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-indigo-50 to-white flex flex-col items-center justify-center p-4">
