@@ -173,8 +173,22 @@ services:
 
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    networks:
+      - traefik-public
+      - default
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    restart: always
+
 volumes:
   app-db-data:
+  ollama:
 
 networks:
   traefik-public:

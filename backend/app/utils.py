@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from pydantic import BaseModel, create_model
 
 import emails  # type: ignore
 import jwt
@@ -22,10 +23,10 @@ class EmailData:
     subject: str
 
 
-def render_email_template(*, template_name: str, context: dict[str, Any]) -> str:
-    template_str = (
-        Path(__file__).parent / "email-templates" / "build" / template_name
-    ).read_text()
+def render_email_template(*, template_name: str, context: dict[str,
+                                                               Any]) -> str:
+    template_str = (Path(__file__).parent / "email-templates" / "build" /
+                    template_name).read_text()
     html_content = Template(template_str).render(context)
     return html_content
 
@@ -60,12 +61,16 @@ def generate_test_email(email_to: str) -> EmailData:
     subject = f"{project_name} - Test email"
     html_content = render_email_template(
         template_name="test_email.html",
-        context={"project_name": settings.PROJECT_NAME, "email": email_to},
+        context={
+            "project_name": settings.PROJECT_NAME,
+            "email": email_to
+        },
     )
     return EmailData(html_content=html_content, subject=subject)
 
 
-def generate_reset_password_email(email_to: str, email: str, token: str) -> EmailData:
+def generate_reset_password_email(email_to: str, email: str,
+                                  token: str) -> EmailData:
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - Password recovery for user {email}"
     link = f"{settings.FRONTEND_HOST}/reset-password?token={token}"
@@ -82,9 +87,8 @@ def generate_reset_password_email(email_to: str, email: str, token: str) -> Emai
     return EmailData(html_content=html_content, subject=subject)
 
 
-def generate_new_account_email(
-    email_to: str, username: str, password: str
-) -> EmailData:
+def generate_new_account_email(email_to: str, username: str,
+                               password: str) -> EmailData:
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - New account for user {username}"
     html_content = render_email_template(
@@ -106,7 +110,11 @@ def generate_password_reset_token(email: str) -> str:
     expires = now + delta
     exp = expires.timestamp()
     encoded_jwt = jwt.encode(
-        {"exp": exp, "nbf": now, "sub": email},
+        {
+            "exp": exp,
+            "nbf": now,
+            "sub": email
+        },
         settings.SECRET_KEY,
         algorithm=security.ALGORITHM,
     )
@@ -115,9 +123,39 @@ def generate_password_reset_token(email: str) -> str:
 
 def verify_password_reset_token(token: str) -> str | None:
     try:
-        decoded_token = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
-        )
+        decoded_token = jwt.decode(token,
+                                   settings.SECRET_KEY,
+                                   algorithms=[security.ALGORITHM])
         return str(decoded_token["sub"])
     except InvalidTokenError:
         return None
+
+
+def dynamic_class_creator(fields: list[str]) -> BaseModel:
+    """Create a dynamic Pydantic model based on the given fields.
+
+    Args:
+        fields (list[str]): A list of field names for the dynamic model.
+
+    Returns:
+        ResponseModel: A Pydantic model that contains a list of instances of the dynamically created model.
+
+    Example:
+        >>> fields = ['name', 'age', 'email']
+        >>> model = dynamic_class_creator(fields)
+        >>> data = [
+        ...     {'name': 'John', 'age': 25, 'email': 'john@example.com'},
+        ...     {'name': 'Jane', 'age': 30, 'email': 'jane@example.com'}
+        ... ]
+        >>> response = model(data=data)
+
+    """
+    # Define a dictionary to hold the fields of the class
+    field_definitions = {field_name: (str, ...) for field_name in fields}
+    # Dynamically create a Pydantic model
+    DynamicClass = create_model("Table", **field_definitions)
+
+    class ResponseModel(BaseModel):
+        data: list[DynamicClass]
+
+    return ResponseModel

@@ -113,6 +113,15 @@ services:
       args:
         - NODE_ENV=development
 
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    restart: "no"
+
 networks:
   traefik-public:
     # For local dev, don't expect an external Traefik network
