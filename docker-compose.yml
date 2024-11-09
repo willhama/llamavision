@@ -133,6 +133,17 @@ services:
 
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.middlewares=https-redirect
+  next-frontend:
+    image: 'next-frontend'
+    container_name: 'next-frontend'
+    restart: always
+    networks:
+      - traefik-public
+      - default
+    build:
+      context: ./next-frontend
+      args:
+        - NODE_ENV=production
 
   frontend:
     image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
