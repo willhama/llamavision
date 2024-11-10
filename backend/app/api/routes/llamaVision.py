@@ -2,12 +2,10 @@ import os
 from fastapi import APIRouter, Response, File, UploadFile, HTTPException, Depends
 from docling.document_converter import DocumentConverter
 from app.api.deps import CurrentUser, SessionDep
-from app.utils import dynamic_class_creator
-from app.models import Document
+from app.models import Document, DocumentMetadata, DocumentBulkRepsonse
 from openai import OpenAI
-from pydantic import BaseModel, Field
-from typing import List
 import instructor
+from sqlmodel import select
 
 source = "https://arxiv.org/pdf/2408.09869"  # document per local path or URL
 
@@ -17,6 +15,22 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter()
+
+
+@router.get("/documents", response_model=None)
+async def get_documents(session: SessionDep, current_user: CurrentUser) -> any:
+    statement = (select(Document).where(Document.owner_id == current_user.id))
+    items = session.exec(statement).all()
+    return {"items": items}
+
+
+@router.get("/documents/{document_id}", response_model=Document)
+async def get_document(session: SessionDep, current_user: CurrentUser,
+                       document_id: str) -> dict:
+    document = session.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document
 
 
 @router.post("/vision/upload-and-extract")
@@ -34,7 +48,6 @@ async def upload_and_extract(
         # Extract data from the uploaded file
         converter = DocumentConverter()
         result = converter.convert(file_path)
-        # print("DOCUMENT DOUCMENT", result.document.model_dump())
         markdown_content = result.document.export_to_markdown()
         json_content = result.document.model_dump()
 
@@ -44,7 +57,7 @@ async def upload_and_extract(
             "description": None,
             "url": file_path,
             "documentText": markdown_content,
-            "documentData": json_content
+            "documentData": {}
         }
 
         item = Document.model_validate(item_in,
@@ -68,7 +81,12 @@ async def structure(session: SessionDep, document_id: str) -> Response:
     # Extract data from the uploaded file
     columns = ["title", "content", "name", "symptom", "diagnosis", "treatment"]
 
-    response_class = dynamic_class_creator(columns)
+    class MeetingInfo(BaseModel):
+        users: List[User]
+        date: str
+        location: str
+        budget: int
+        deadline: str
 
     # enables `response_model` in create call
     client = instructor.from_openai(
@@ -99,7 +117,7 @@ async def structure(session: SessionDep, document_id: str) -> Response:
             "role": "system",
             "content": text,
         }],
-        response_model=response_class,
+        response_model=MeetingInfo,
     )
     print(resp.model_dump_json(indent=2))
     return Response(content=resp.model_dump_json(),

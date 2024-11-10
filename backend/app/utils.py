@@ -129,33 +129,3 @@ def verify_password_reset_token(token: str) -> str | None:
         return str(decoded_token["sub"])
     except InvalidTokenError:
         return None
-
-
-def dynamic_class_creator(fields: list[str]) -> BaseModel:
-    """Create a dynamic Pydantic model based on the given fields.
-
-    Args:
-        fields (list[str]): A list of field names for the dynamic model.
-
-    Returns:
-        ResponseModel: A Pydantic model that contains a list of instances of the dynamically created model.
-
-    Example:
-        >>> fields = ['name', 'age', 'email']
-        >>> model = dynamic_class_creator(fields)
-        >>> data = [
-        ...     {'name': 'John', 'age': 25, 'email': 'john@example.com'},
-        ...     {'name': 'Jane', 'age': 30, 'email': 'jane@example.com'}
-        ... ]
-        >>> response = model(data=data)
-
-    """
-    # Define a dictionary to hold the fields of the class
-    field_definitions = {field_name: (str, ...) for field_name in fields}
-    # Dynamically create a Pydantic model
-    DynamicClass = create_model("Table", **field_definitions)
-
-    class ResponseModel(BaseModel):
-        data: list[DynamicClass]
-
-    return ResponseModel

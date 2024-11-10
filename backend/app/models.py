@@ -15,6 +15,15 @@ class Document(SQLModel, table=True):
     documentText: str | None = Field(default=None)
     documentData: dict = Field(sa_column=Column(JSON))
 
+class DocumentMetadata(SQLModel):
+    id: str
+    title: str
+    description: str | None = None
+    url: str
+
+class DocumentBulkRepsonse(SQLModel):
+    documents: list[DocumentMetadata]
+
 # Shared properties
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
